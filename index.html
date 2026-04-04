@@ -273,9 +273,9 @@
                 <label>Ödev Dosyası (Max 50MB)</label>
                 <div class="file-input-wrapper">
                     <label for="dosya" class="custom-file-btn" id="file-label">
-                        Dosya Seç (Max 50MB)
+                        Dosyaları Seç (Max 50MB/Dosya)
                     </label>
-                    <input type="file" id="dosya" name="dosya" required>
+                    <input type="file" id="dosya" name="dosya" multiple required>
                     <div id="file-name-display">Henüz dosya seçilmedi</div>
                 </div>
             </div>
@@ -344,9 +344,18 @@
         // Dosya seçilince ismi göster
         fileInput.addEventListener('change', () => {
             if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                fileNameDisplay.textContent = `Seçilen Dosya: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+                const count = fileInput.files.length;
+                let filesInfo = count > 1 ? `${count} dosya seçildi:<br>` : "";
+                
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    const file = fileInput.files[i];
+                    filesInfo += `• ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)<br>`;
+                }
+                
+                fileNameDisplay.innerHTML = filesInfo;
                 errorBox.style.display = 'none';
+            } else {
+                fileNameDisplay.textContent = "Henüz dosya seçilmedi";
             }
         });
 
@@ -358,9 +367,9 @@
             const ogrenciNo = document.getElementById('ogrenciNo').value.trim();
             const dersAdi = document.getElementById('ders').value;
             const sinif = document.getElementById('sinif').value;
-            const file = fileInput.files[0];
+            const files = fileInput.files;
 
-            if (!file) return;
+            if (files.length === 0) return;
 
             // Hazırlık
             submitBtn.disabled = true;
@@ -374,7 +383,10 @@
             formData.append('ogrenciNo', ogrenciNo);
             formData.append('dersAdi', dersAdi);
             formData.append('sinif', sinif);
-            formData.append('dosya', file);
+            
+            for (let i = 0; i < files.length; i++) {
+                formData.append('dosya', files[i]);
+            }
 
             const xhr = new XMLHttpRequest();
             

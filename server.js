@@ -28,55 +28,66 @@ app.get('/saglik', (req, res) => {
 });
 
 // Dosya Yükleme Endpoint
-app.post('/yukle', upload.single('dosya'), async (req, res) => {
+app.post('/yukle', upload.array('dosya', 10), async (req, res) => {
     try {
         const { adSoyad, ogrenciNo, dersAdi, sinif } = req.body;
-        const file = req.file;
+        const files = req.files;
 
-        if (!file) {
+        if (!files || files.length === 0) {
             return res.status(400).json({ durum: "hata", mesaj: "Dosya seçilmedi!" });
         }
 
-        // Zaman Damgası (UTC+3 - İstanbul/Türkiye)
+        console.log(`Çoklu Yükleme Başlatıldı (Bridge): ${files.length} dosya - Ders: ${dersAdi} - Sınıf: ${sinif}`);
+
+        const uploadResults = [];
         const timestamp = moment().tz("Europe/Istanbul").format("YYYYMMDD_HHmmss");
-        
-        // Yeni Dosya Adı: ogrenciNo_adSoyad_YYYYMMDD_HHmmss.[uzantı]
-        const temizAdSoyad = adSoyad.replace(/\s+/g, '_');
-        const fileExt = file.originalname.includes('.') ? file.originalname.split('.').pop() : 'bin';
-        const newFileName = `${ogrenciNo}_${temizAdSoyad}_${timestamp}.${fileExt}`;
 
-        console.log(`Yükleme Başlatıldı (Bridge): ${newFileName} - Ders: ${dersAdi} - Sınıf: ${sinif}`);
+        for (const file of files) {
+            // Yeni Dosya Adı: ogrenciNo_adSoyad_YYYYMMDD_HHmmss.[uzantı]
+            const temizAdSoyad = adSoyad.replace(/\s+/g, '_');
+            const fileExt = file.originalname.includes('.') ? file.originalname.split('.').pop() : 'bin';
+            const newFileName = `${ogrenciNo}_${temizAdSoyad}_${timestamp}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
 
-        // Dosyayı Base64'e çevir (Apps Script için)
-        const fileBase64 = file.buffer.toString('base64');
+            // Dosyayı Base64'e çevir (Apps Script için)
+            const fileBase64 = file.buffer.toString('base64');
 
-        // Google Apps Script Web App'e gönder
-        const response = await axios.post(process.env.APPS_SCRIPT_URL, {
-            adSoyad,
-            ogrenciNo,
-            dersAdi,
-            sinif,
-            fileName: newFileName,
-            fileBase64: fileBase64,
-            mimeType: file.mimetype // Mimetype bilgisini de iletelim
-        }, {
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity
-        });
-
-        if (response.data.status === 'success') {
-            console.log(`Başarıyla Yüklendi (Bridge): ${newFileName} (Drive ID: ${response.data.fileId})`);
-            res.json({
-                durum: "ok",
-                dosyaAdi: newFileName,
-                klasor: sinif
+            // Google Apps Script Web App'e gönder
+            const response = await axios.post(process.env.APPS_SCRIPT_URL, {
+                adSoyad,
+                ogrenciNo,
+                dersAdi,
+                sinif,
+                fileName: newFileName,
+                fileBase64: fileBase64,
+                mimeType: file.mimetype
+            }, {
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity
             });
-        } else {
-            throw new Error(response.data.message || "Apps Script hatası");
+
+            if (response.data.status === 'success') {
+                console.log(`Başarıyla Yüklendi (Bridge): ${newFileName} (Drive ID: ${response.data.fileId})`);
+                uploadResults.push({ name: newFileName, status: "ok" });
+            } else {
+                console.error(`Yükleme Hatası (File: ${newFileName}):`, response.data.message);
+                uploadResults.push({ name: newFileName, status: "error", message: response.data.message });
+            }
         }
 
+        const successCount = uploadResults.filter(r => r.status === "ok").length;
+        
+        if (successCount === 0) {
+            throw new Error("Hiçbir dosya yüklenemedi.");
+        }
+
+        res.json({
+            durum: "ok",
+            mesaj: `${successCount} dosya başarıyla yüklendi.`,
+            detaylar: uploadResults
+        });
+
     } catch (error) {
-        console.error("Yükleme Hatası (Bridge):", error);
+        console.error("Genel Yükleme Hatası (Bridge):", error);
         res.status(500).json({
             durum: "hata",
             mesaj: error.message || "Sunucu tarafında bir hata oluştu."
