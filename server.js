@@ -1,10 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
-const { google } = require('googleapis');
+const axios = require('axios');
 const moment = require('moment-timezone');
 const dotenv = require('dotenv');
-const { Readable } = require('stream');
 
 // .env dosyasını yükle
 dotenv.config();
@@ -14,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 // Multer Yapılandırması (Memory Storage)
 const storage = multer.memoryStorage();
@@ -30,62 +29,15 @@ const upload = multer({
     }
 });
 
-// Google Drive API Yetkilendirme
-const auth = new google.auth.JWT(
-    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    null,
-    process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-    ['https://www.googleapis.com/auth/drive']
-);
-
-const drive = google.drive({ version: 'v3', auth });
-
-/**
- * Drive'da klasör bulur, yoksa oluşturur.
- * @param {string} folderName Klasör adı
- * @param {string} parentId Üst klasör ID (opsiyonel)
- * @returns {Promise<string>} Klasör ID
- */
-async function getOrCreateFolder(folderName, parentId = null) {
-    let query = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-    if (parentId) {
-        query += ` and '${parentId}' in parents`;
-    }
-
-    const response = await drive.files.list({
-        q: query,
-        fields: 'files(id, name)',
-        spaces: 'drive',
-    });
-
-    if (response.data.files.length > 0) {
-        return response.data.files[0].id;
-    }
-
-    // Klasör yoksa oluştur
-    const folderMetadata = {
-        name: folderName,
-        mimeType: 'application/vnd.google-apps.folder',
-        parents: parentId ? [parentId] : []
-    };
-
-    const folder = await drive.files.create({
-        resource: folderMetadata,
-        fields: 'id',
-    });
-
-    return folder.data.id;
-}
-
 // Sağlık Kontrolü Endpoint
 app.get('/saglik', (req, res) => {
-    res.json({ durum: "aktif" });
+    res.json({ durum: "aktif", mod: "apps-script-bridge" });
 });
 
 // Dosya Yükleme Endpoint
 app.post('/yukle', upload.single('dosya'), async (req, res) => {
     try {
-        const { adSoyad, ogrenciNo, sinif } = req.body;
+        const { adSoyad, ogrenciNo, dersAdi, sinif } = req.body;
         const file = req.file;
 
         if (!file) {
@@ -96,45 +48,40 @@ app.post('/yukle', upload.single('dosya'), async (req, res) => {
         const timestamp = moment().tz("Europe/Istanbul").format("YYYYMMDD_HHmmss");
         
         // Yeni Dosya Adı: ogrenciNo_adSoyad_YYYYMMDD_HHmmss.zip
-        // Dosya ismindeki boşlukları temizleyelim
         const temizAdSoyad = adSoyad.replace(/\s+/g, '_');
         const newFileName = `${ogrenciNo}_${temizAdSoyad}_${timestamp}.zip`;
 
-        console.log(`Yükleme Başlatıldı: ${newFileName} - Sınıf: ${sinif}`);
+        console.log(`Yükleme Başlatıldı (Bridge): ${newFileName} - Ders: ${dersAdi} - Sınıf: ${sinif}`);
 
-        // 1. Ana BDT klasörünü bul/oluştur
-        const bdtFolderId = await getOrCreateFolder('BDT');
+        // Dosyayı Base64'e çevir (Apps Script için)
+        const fileBase64 = file.buffer.toString('base64');
 
-        // 2. Sınıf klasörünü BDT altında bul/oluştur
-        const classFolderId = await getOrCreateFolder(sinif, bdtFolderId);
-
-        // 3. Dosyayı Drive'a yükle
-        const bufferStream = new Readable();
-        bufferStream.push(file.buffer);
-        bufferStream.push(null);
-
-        const driveResponse = await drive.files.create({
-            requestBody: {
-                name: newFileName,
-                parents: [classFolderId]
-            },
-            media: {
-                mimeType: 'application/zip',
-                body: bufferStream
-            },
-            fields: 'id'
+        // Google Apps Script Web App'e gönder
+        const response = await axios.post(process.env.APPS_SCRIPT_URL, {
+            adSoyad,
+            ogrenciNo,
+            dersAdi,
+            sinif,
+            fileName: newFileName,
+            fileBase64: fileBase64
+        }, {
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity
         });
 
-        console.log(`Başarıyla Yüklendi: ${newFileName} (ID: ${driveResponse.data.id})`);
-
-        res.json({
-            durum: "ok",
-            dosyaAdi: newFileName,
-            klasor: sinif
-        });
+        if (response.data.status === 'success') {
+            console.log(`Başarıyla Yüklendi (Bridge): ${newFileName} (Drive ID: ${response.data.fileId})`);
+            res.json({
+                durum: "ok",
+                dosyaAdi: newFileName,
+                klasor: sinif
+            });
+        } else {
+            throw new Error(response.data.message || "Apps Script hatası");
+        }
 
     } catch (error) {
-        console.error("Yükleme Hatası:", error);
+        console.error("Yükleme Hatası (Bridge):", error);
         res.status(500).json({
             durum: "hata",
             mesaj: error.message || "Sunucu tarafında bir hata oluştu."
@@ -157,5 +104,5 @@ app.use((err, req, res, next) => {
 
 // Başlat
 app.listen(PORT, () => {
-    console.log(`API Sunucusu çalışıyor: http://localhost:${PORT}`);
+    console.log(`API Sunucusu (Bridge Mode) çalışıyor: http://localhost:${PORT}`);
 });

@@ -252,9 +252,20 @@
             </div>
 
             <div class="form-group">
+                <label for="ders">Ders Seçimi</label>
+                <select id="ders" name="ders" required>
+                    <option value="Bilgisayar Destekli Tasarım">Bilgisayar Destekli Tasarım</option>
+                    <option value="Programlanabilir Denetleyiciler">Programlanabilir Denetleyiciler</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="sinif">Sınıf Seçimi</label>
                 <select id="sinif" name="sinif" required>
-                    <option value="Elektronik_1">Elektronik 1. Sınıf</option>
+                    <option value="Elektronik 1">Elektronik 1. Sınıf</option>
+                    <option value="Elektronik 2">Elektronik 2. Sınıf</option>
+                    <option value="Elektrik 1">Elektrik 1. Sınıf</option>
+                    <option value="Elektrik 2">Elektrik 2. Sınıf</option>
                 </select>
             </div>
 
@@ -352,6 +363,7 @@
 
             const adSoyad = document.getElementById('adSoyad').value.trim();
             const ogrenciNo = document.getElementById('ogrenciNo').value.trim();
+            const dersAdi = document.getElementById('ders').value;
             const sinif = document.getElementById('sinif').value;
             const file = fileInput.files[0];
 
@@ -367,6 +379,7 @@
             const formData = new FormData();
             formData.append('adSoyad', adSoyad);
             formData.append('ogrenciNo', ogrenciNo);
+            formData.append('dersAdi', dersAdi);
             formData.append('sinif', sinif);
             formData.append('dosya', file);
 
