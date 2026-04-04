@@ -270,12 +270,12 @@
             </div>
 
             <div class="form-group">
-                <label>Ödev Dosyası (.zip)</label>
+                <label>Ödev Dosyası (Max 50MB)</label>
                 <div class="file-input-wrapper">
                     <label for="dosya" class="custom-file-btn" id="file-label">
-                        Dosya Seç (.zip, max 50MB)
+                        Dosya Seç (Max 50MB)
                     </label>
-                    <input type="file" id="dosya" name="dosya" accept=".zip" required>
+                    <input type="file" id="dosya" name="dosya" required>
                     <div id="file-name-display">Henüz dosya seçilmedi</div>
                 </div>
             </div>
@@ -345,15 +345,8 @@
         fileInput.addEventListener('change', () => {
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
-                if (file.name.toLowerCase().endsWith('.zip')) {
-                    fileNameDisplay.textContent = `Seçilen Dosya: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
-                    errorBox.style.display = 'none';
-                } else {
-                    fileNameDisplay.textContent = "Hatalı dosya formatı!";
-                    errorBox.textContent = "Lütfen sadece .zip dosyası seçiniz.";
-                    errorBox.style.display = 'block';
-                    fileInput.value = ''; // Reset
-                }
+                fileNameDisplay.textContent = `Seçilen Dosya: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+                errorBox.style.display = 'none';
             }
         });
 

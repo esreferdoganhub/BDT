@@ -19,14 +19,7 @@ app.use(express.json({ limit: '50mb' }));
 const storage = multer.memoryStorage();
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype === 'application/zip' || file.originalname.endsWith('.zip')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Sadece .zip dosyaları kabul edilmektedir!'), false);
-        }
-    }
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
 // Sağlık Kontrolü Endpoint
@@ -47,9 +40,10 @@ app.post('/yukle', upload.single('dosya'), async (req, res) => {
         // Zaman Damgası (UTC+3 - İstanbul/Türkiye)
         const timestamp = moment().tz("Europe/Istanbul").format("YYYYMMDD_HHmmss");
         
-        // Yeni Dosya Adı: ogrenciNo_adSoyad_YYYYMMDD_HHmmss.zip
+        // Yeni Dosya Adı: ogrenciNo_adSoyad_YYYYMMDD_HHmmss.[uzantı]
         const temizAdSoyad = adSoyad.replace(/\s+/g, '_');
-        const newFileName = `${ogrenciNo}_${temizAdSoyad}_${timestamp}.zip`;
+        const fileExt = file.originalname.includes('.') ? file.originalname.split('.').pop() : 'bin';
+        const newFileName = `${ogrenciNo}_${temizAdSoyad}_${timestamp}.${fileExt}`;
 
         console.log(`Yükleme Başlatıldı (Bridge): ${newFileName} - Ders: ${dersAdi} - Sınıf: ${sinif}`);
 
@@ -63,7 +57,8 @@ app.post('/yukle', upload.single('dosya'), async (req, res) => {
             dersAdi,
             sinif,
             fileName: newFileName,
-            fileBase64: fileBase64
+            fileBase64: fileBase64,
+            mimeType: file.mimetype // Mimetype bilgisini de iletelim
         }, {
             maxContentLength: Infinity,
             maxBodyLength: Infinity
