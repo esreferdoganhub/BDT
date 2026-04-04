@@ -1,0 +1,29 @@
+{
+  "name": "bdt-file-delivery",
+  "version": "1.0.0",
+  "description": "BDT Uygulama Sınavı Dosya Teslim Sistemi Backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "express",
+    "google-drive",
+    "multer",
+    "file-upload"
+  ],
+  "author": "Esref Erdogan",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "googleapis": "^134.0.0",
+    "moment-timezone": "^0.5.45",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
