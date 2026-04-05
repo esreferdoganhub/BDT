@@ -30,23 +30,24 @@ app.get('/saglik', (req, res) => {
 // Dosya Yükleme Endpoint
 app.post('/yukle', upload.array('dosya', 10), async (req, res) => {
     try {
-        const { adSoyad, ogrenciNo, dersAdi, sinif } = req.body;
+        const { adSoyad, ogrenciNo, dersAdi, sinif, masaNo } = req.body;
         const files = req.files;
 
         if (!files || files.length === 0) {
             return res.status(400).json({ durum: "hata", mesaj: "Dosya seçilmedi!" });
         }
 
-        console.log(`Çoklu Yükleme Başlatıldı (Bridge): ${files.length} dosya - Ders: ${dersAdi} - Sınıf: ${sinif}`);
+        console.log(`Çoklu Yükleme Başlatıldı (Bridge): ${files.length} dosya - Ders: ${dersAdi} - Sınıf: ${sinif} - Masa: ${masaNo}`);
 
         const uploadResults = [];
         const timestamp = moment().tz("Europe/Istanbul").format("YYYYMMDD_HHmmss");
 
         for (const file of files) {
-            // Yeni Dosya Adı: ogrenciNo_adSoyad_YYYYMMDD_HHmmss.[uzantı]
+            // Yeni Dosya Adı: ogrenciNo_masaNo_adSoyad_YYYYMMDD_HHmmss.[uzantı]
             const temizAdSoyad = adSoyad.replace(/\s+/g, '_');
+            const temizMasaNo = (masaNo || 'MasaYok').replace(/\s+/g, '_');
             const fileExt = file.originalname.includes('.') ? file.originalname.split('.').pop() : 'bin';
-            const newFileName = `${ogrenciNo}_${temizAdSoyad}_${timestamp}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
+            const newFileName = `${ogrenciNo}_${temizMasaNo}_${temizAdSoyad}_${timestamp}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
 
             // Dosyayı Base64'e çevir (Apps Script için)
             const fileBase64 = file.buffer.toString('base64');
