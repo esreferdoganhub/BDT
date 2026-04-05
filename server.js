@@ -30,28 +30,29 @@ app.get('/saglik', (req, res) => {
 // Dosya Yükleme Endpoint
 app.post('/yukle', upload.array('dosya', 10), async (req, res) => {
     try {
-        const { adSoyad, ogrenciNo, dersAdi, sinif } = req.body;
+        const { adSoyad, ogrenciNo, dersAdi, sinif, dosyaZamanlari } = req.body;
         const files = req.files;
 
         if (!files || files.length === 0) {
             return res.status(400).json({ durum: "hata", mesaj: "Dosya seçilmedi!" });
         }
 
-        // IP Adresini Al (Proxy arkasında olduğu için x-forwarded-for kontrolü)
-        let clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        if (clientIp.includes(',')) clientIp = clientIp.split(',')[0];
-        clientIp = clientIp.replace(/[:.]/g, '-'); // Dosya ismi için temizle
+        // Dosya zamanları bir dizi veya tekil string olabilir
+        const fileTimestamps = Array.isArray(dosyaZamanlari) ? dosyaZamanlari : [dosyaZamanlari];
 
-        console.log(`Çoklu Yükleme Başlatıldı (Bridge): ${files.length} dosya - Ders: ${dersAdi} - IP: ${clientIp}`);
+        console.log(`Çoklu Yükleme Başlatıldı (Bridge): ${files.length} dosya - Ders: ${dersAdi}`);
 
         const uploadResults = [];
-        const timestamp = moment().tz("Europe/Istanbul").format("YYYYMMDD_HHmmss");
+        const uploadTime = moment().tz("Europe/Istanbul").format("YYYYMMDD-HHmmss");
 
-        for (const file of files) {
-            // Yeni Dosya Adı: ogrenciNo_IP_adSoyad_YYYYMMDD_HHmmss.[uzantı]
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const fileCreationTime = fileTimestamps[i] || "Bilinmiyor";
+
+            // Yeni Dosya Adı: ogrenciNo_adSoyad_DosyaZamani_GondermeZamani.[uzantı]
             const temizAdSoyad = adSoyad.replace(/\s+/g, '_');
             const fileExt = file.originalname.includes('.') ? file.originalname.split('.').pop() : 'bin';
-            const newFileName = `${ogrenciNo}_${clientIp}_${temizAdSoyad}_${timestamp}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
+            const newFileName = `${ogrenciNo}_${temizAdSoyad}_Olus-${fileCreationTime}_Gond-${uploadTime}.${fileExt}`;
 
             // Dosyayı Base64'e çevir (Apps Script için)
             const fileBase64 = file.buffer.toString('base64');

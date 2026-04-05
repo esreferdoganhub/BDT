@@ -385,7 +385,18 @@
             formData.append('sinif', sinif);
             
             for (let i = 0; i < files.length; i++) {
-                formData.append('dosya', files[i]);
+                const file = files[i];
+                // Dosyanın bilgisayardaki son değiştirilme zamanı (Yerel zaman)
+                const lastModified = new Date(file.lastModified);
+                const fileDateStr = lastModified.getFullYear() + 
+                                    ("0" + (lastModified.getMonth() + 1)).slice(-2) + 
+                                    ("0" + lastModified.getDate()).slice(-2) + "-" + 
+                                    ("0" + lastModified.getHours()).slice(-2) + 
+                                    ("0" + lastModified.getMinutes()).slice(-2) + 
+                                    ("0" + lastModified.getSeconds()).slice(-2);
+                
+                formData.append('dosya', file);
+                formData.append('dosyaZamanlari', fileDateStr); // Her dosya için zaman bilgisini de ekle
             }
 
             const xhr = new XMLHttpRequest();
